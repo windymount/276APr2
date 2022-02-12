@@ -3,130 +3,131 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt; plt.ion()
 from mpl_toolkits.mplot3d import Axes3D
+from params import LIDAR_MAXRANGE
 import time
 
 def tic():
-  return time.time()
+    return time.time()
 def toc(tstart, name="Operation"):
-  print('%s took: %s sec.\n' % (name,(time.time() - tstart)))
+    print('%s took: %s sec.\n' % (name,(time.time() - tstart)))
 
 
 def compute_stereo():
-  path_l = 'data/image_left.png'
-  path_r = 'data/image_right.png'
+    path_l = 'data/image_left.png'
+    path_r = 'data/image_right.png'
 
-  image_l = cv2.imread(path_l, 0)
-  image_r = cv2.imread(path_r, 0)
+    image_l = cv2.imread(path_l, 0)
+    image_r = cv2.imread(path_r, 0)
 
-  image_l = cv2.cvtColor(image_l, cv2.COLOR_BAYER_BG2BGR)
-  image_r = cv2.cvtColor(image_r, cv2.COLOR_BAYER_BG2BGR)
+    image_l = cv2.cvtColor(image_l, cv2.COLOR_BAYER_BG2BGR)
+    image_r = cv2.cvtColor(image_r, cv2.COLOR_BAYER_BG2BGR)
 
-  image_l_gray = cv2.cvtColor(image_l, cv2.COLOR_BGR2GRAY)
-  image_r_gray = cv2.cvtColor(image_r, cv2.COLOR_BGR2GRAY)
+    image_l_gray = cv2.cvtColor(image_l, cv2.COLOR_BGR2GRAY)
+    image_r_gray = cv2.cvtColor(image_r, cv2.COLOR_BGR2GRAY)
 
-  # You may need to fine-tune the variables `numDisparities` and `blockSize` based on the desired accuracy
-  stereo = cv2.StereoBM_create(numDisparities=32, blockSize=9) 
-  disparity = stereo.compute(image_l_gray, image_r_gray)
+    # You may need to fine-tune the variables `numDisparities` and `blockSize` based on the desired accuracy
+    stereo = cv2.StereoBM_create(numDisparities=32, blockSize=9) 
+    disparity = stereo.compute(image_l_gray, image_r_gray)
 
-  fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
-  ax1.imshow(image_l)
-  ax1.set_title('Left Image')
-  ax2.imshow(image_r)
-  ax2.set_title('Right Image')
-  ax3.imshow(disparity, cmap='gray')
-  ax3.set_title('Disparity Map')
-  plt.show()
-  
+    fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
+    ax1.imshow(image_l)
+    ax1.set_title('Left Image')
+    ax2.imshow(image_r)
+    ax2.set_title('Right Image')
+    ax3.imshow(disparity, cmap='gray')
+    ax3.set_title('Disparity Map')
+    plt.show()
+    
 
 def read_data_from_csv(filename):
-  '''
-  INPUT 
-  filename        file address
+    '''
+    INPUT 
+    filename        file address
 
-  OUTPUT 
-  timestamp       timestamp of each observation
-  data            a numpy array containing a sensor measurement in each row
-  '''
-  data_csv = pd.read_csv(filename, header=None)
-  data = data_csv.values[:, 1:]
-  timestamp = data_csv.values[:, 0]
-  return timestamp, data
+    OUTPUT 
+    timestamp       timestamp of each observation
+    data            a numpy array containing a sensor measurement in each row
+    '''
+    data_csv = pd.read_csv(filename, header=None)
+    data = data_csv.values[:, 1:]
+    timestamp = data_csv.values[:, 0]
+    return timestamp, data
 
 
 def mapCorrelation(im, x_im, y_im, vp, xs, ys):
-  '''
-  INPUT 
-  im              the map 
-  x_im,y_im       physical x,y positions of the grid map cells
-  vp[0:2,:]       occupied x,y positions from range sensor (in physical unit)  
-  xs,ys           physical x,y,positions you want to evaluate "correlation" 
+    '''
+    INPUT 
+    im              the map 
+    x_im,y_im       physical x,y positions of the grid map cells
+    vp[0:2,:]       occupied x,y positions from range sensor (in physical unit)  
+    xs,ys           physical x,y,positions you want to evaluate "correlation" 
 
-  OUTPUT 
-  c               sum of the cell values of all the positions hit by range sensor
-  '''
-  nx = im.shape[0]
-  ny = im.shape[1]
-  xmin = x_im[0]
-  xmax = x_im[-1]
-  xresolution = (xmax-xmin)/(nx-1)
-  ymin = y_im[0]
-  ymax = y_im[-1]
-  yresolution = (ymax-ymin)/(ny-1)
-  nxs = xs.size
-  nys = ys.size
-  cpr = np.zeros((nxs, nys))
-  for jy in range(0,nys):
-    y1 = vp[1,:] + ys[jy] # 1 x 1076
-    iy = np.int16(np.round((y1-ymin)/yresolution))
-    for jx in range(0,nxs):
-      x1 = vp[0,:] + xs[jx] # 1 x 1076
-      ix = np.int16(np.round((x1-xmin)/xresolution))
-      valid = np.logical_and( np.logical_and((iy >=0), (iy < ny)), \
-			                        np.logical_and((ix >=0), (ix < nx)))
-      cpr[jx,jy] = np.sum(im[ix[valid],iy[valid]])
-  return cpr
+    OUTPUT 
+    c               sum of the cell values of all the positions hit by range sensor
+    '''
+    nx = im.shape[0]
+    ny = im.shape[1]
+    xmin = x_im[0]
+    xmax = x_im[-1]
+    xresolution = (xmax-xmin)/(nx-1)
+    ymin = y_im[0]
+    ymax = y_im[-1]
+    yresolution = (ymax-ymin)/(ny-1)
+    nxs = xs.size
+    nys = ys.size
+    cpr = np.zeros((nxs, nys))
+    for jy in range(0,nys):
+        y1 = vp[1,:] + ys[jy] # 1 x 1076
+        iy = np.int16(np.round((y1-ymin)/yresolution))
+        for jx in range(0,nxs):
+            x1 = vp[0,:] + xs[jx] # 1 x 1076
+            ix = np.int16(np.round((x1-xmin)/xresolution))
+            valid = np.logical_and( np.logical_and((iy >=0), (iy < ny)), \
+                                    np.logical_and((ix >=0), (ix < nx)))
+            cpr[jx,jy] = np.sum(im[ix[valid],iy[valid]])
+    return cpr
 
 
 def bresenham2D(sx, sy, ex, ey):
-  '''
-  Bresenham's ray tracing algorithm in 2D.
-  Inputs:
-	  (sx, sy)	start point of ray
-	  (ex, ey)	end point of ray
-  '''
-  sx = int(round(sx))
-  sy = int(round(sy))
-  ex = int(round(ex))
-  ey = int(round(ey))
-  dx = abs(ex-sx)
-  dy = abs(ey-sy)
-  steep = abs(dy)>abs(dx)
-  if steep:
-    dx,dy = dy,dx # swap 
+    '''
+    Bresenham's ray tracing algorithm in 2D.
+    Inputs:
+        (sx, sy)	start point of ray
+        (ex, ey)	end point of ray
+    '''
+    sx = int(round(sx))
+    sy = int(round(sy))
+    ex = int(round(ex))
+    ey = int(round(ey))
+    dx = abs(ex-sx)
+    dy = abs(ey-sy)
+    steep = abs(dy)>abs(dx)
+    if steep:
+        dx,dy = dy,dx # swap 
 
-  if dy == 0:
-    q = np.zeros((dx+1,1))
-  else:
-    q = np.append(0,np.greater_equal(np.diff(np.mod(np.arange( np.floor(dx/2), -dy*dx+np.floor(dx/2)-1,-dy),dx)),0))
-  if steep:
-    if sy <= ey:
-      y = np.arange(sy,ey+1)
+    if dy == 0:
+        q = np.zeros((dx+1,1))
     else:
-      y = np.arange(sy,ey-1,-1)
-    if sx <= ex:
-      x = sx + np.cumsum(q)
+        q = np.append(0,np.greater_equal(np.diff(np.mod(np.arange( np.floor(dx/2), -dy*dx+np.floor(dx/2)-1,-dy),dx)),0))
+    if steep:
+        if sy <= ey:
+            y = np.arange(sy,ey+1)
+        else:
+            y = np.arange(sy,ey-1,-1)
+        if sx <= ex:
+            x = sx + np.cumsum(q)
+        else:
+            x = sx - np.cumsum(q)
     else:
-      x = sx - np.cumsum(q)
-  else:
-    if sx <= ex:
-      x = np.arange(sx,ex+1)
-    else:
-      x = np.arange(sx,ex-1,-1)
-    if sy <= ey:
-      y = sy + np.cumsum(q)
-    else:
-      y = sy - np.cumsum(q)
-  return np.vstack((x,y))
+        if sx <= ex:
+            x = np.arange(sx,ex+1)
+        else:
+            x = np.arange(sx,ex-1,-1)
+        if sy <= ey:
+            y = sy + np.cumsum(q)
+        else:
+            y = sy - np.cumsum(q)
+    return np.vstack((x,y))
     
 
 def test_bresenham2D():
@@ -147,7 +148,7 @@ def test_bresenham2D():
   num_rep = 1000
   start_time = time.time()
   for i in range(0,num_rep):
-	  x,y = bresenham2D(sx, sy, 500, 200)
+    x,y = bresenham2D(sx, sy, 500, 200)
   print("1000 raytraces: --- %s seconds ---" % (time.time() - start_time))
 
 
@@ -215,9 +216,9 @@ def test_mapCorrelation():
                    [ 2.,  3.,  2.,  6.,  8.,  4.,  5.,  5.,  0.]])
     
   if np.sum(c==c_ex) == np.size(c_ex):
-	  print("...Test passed.")
+    print("...Test passed.")
   else:
-	  print("...Test failed. Close figures to continue tests.")	
+    print("...Test failed. Close figures to continue tests.")	
 
   #plot original lidar points
   fig1 = plt.figure()
@@ -255,7 +256,13 @@ def show_lidar():
   ax.grid(True)
   ax.set_title("Lidar scan data", va='bottom')
   plt.show()
-	
+  
+
+def lidar_correction(lidar_data):
+    # Correct lidar_data
+    lidar_data[lidar_data == 0] = LIDAR_MAXRANGE
+    return lidar_data
+    
 
 if __name__ == '__main__':
   #compute_stereo()
