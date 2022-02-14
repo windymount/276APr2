@@ -34,3 +34,4 @@ STEREO_POSITION = np.array([1.64239, 0.247401, 1.58411])
 # General parameters
 INIT_LOGODDS = 0
 LOGODDS_UPDATE = np.log(4)
+NUM_PARTICLES = 1

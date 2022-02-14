@@ -1,6 +1,6 @@
 import mapping
 from matplotlib import pyplot as plt
-from pr2_utils import read_data_from_csv, lidar_correction
+from pr2_utils import read_data_from_csv, correct_lidar
 import numpy as np
 
 
@@ -10,7 +10,7 @@ def test_init_mapping():
     lidar_time, lidar_data = read_data_from_csv("data/sensor_data/lidar.csv")
     init_rotate = np.eye(3)
     init_position = np.zeros(3)
-    map = mapping.update_map(map, xm, ym, init_rotate, init_position, lidar_correction(lidar_data[0, :]))
+    map = mapping.update_map(map, xm, ym, init_rotate, init_position, correct_lidar(lidar_data[0, :]))
     plt.imshow(mapping.map2prob(map))
     plt.show(block=True)
 

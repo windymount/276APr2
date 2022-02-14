@@ -1,9 +1,11 @@
+from cmath import pi
+from turtle import pos
 import pandas as pd
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt; plt.ion()
 from mpl_toolkits.mplot3d import Axes3D
-from params import LIDAR_MAXRANGE
+from params import LIDAR_MAXRANGE, ENCODER_LEFT_DIAMETER, ENCODER_RESOLUTION, ENCODER_RIGHT_DIAMETER
 import time
 
 def tic():
@@ -131,142 +133,199 @@ def bresenham2D(sx, sy, ex, ey):
     
 
 def test_bresenham2D():
-  import time
-  sx = 0
-  sy = 1
-  print("Testing bresenham2D...")
-  r1 = bresenham2D(sx, sy, 10, 5)
-  r1_ex = np.array([[0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10],[1,1,2,2,3,3,3,4,4,5,5]])
-  r2 = bresenham2D(sx, sy, 9, 6)
-  r2_ex = np.array([[0,1,2,3,4,5,6,7,8,9],[1,2,2,3,3,4,4,5,5,6]])	
-  if np.logical_and(np.sum(r1 == r1_ex) == np.size(r1_ex),np.sum(r2 == r2_ex) == np.size(r2_ex)):
-    print("...Test passed.")
-  else:
-    print("...Test failed.")
+    import time
+    sx = 0
+    sy = 1
+    print("Testing bresenham2D...")
+    r1 = bresenham2D(sx, sy, 10, 5)
+    r1_ex = np.array([[0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10],[1,1,2,2,3,3,3,4,4,5,5]])
+    r2 = bresenham2D(sx, sy, 9, 6)
+    r2_ex = np.array([[0,1,2,3,4,5,6,7,8,9],[1,2,2,3,3,4,4,5,5,6]])	
+    if np.logical_and(np.sum(r1 == r1_ex) == np.size(r1_ex),np.sum(r2 == r2_ex) == np.size(r2_ex)):
+        print("...Test passed.")
+    else:
+        print("...Test failed.")
 
-  # Timing for 1000 random rays
-  num_rep = 1000
-  start_time = time.time()
-  for i in range(0,num_rep):
-    x,y = bresenham2D(sx, sy, 500, 200)
-  print("1000 raytraces: --- %s seconds ---" % (time.time() - start_time))
+    # Timing for 1000 random rays
+    num_rep = 1000
+    start_time = time.time()
+    for i in range(0,num_rep):
+        x,y = bresenham2D(sx, sy, 500, 200)
+    print("1000 raytraces: --- %s seconds ---" % (time.time() - start_time))
 
 
 def test_mapCorrelation():
-  _, lidar_data = read_data_from_csv('data/sensor_data/lidar.csv')
-  angles = np.linspace(-5, 185, 286) / 180 * np.pi
-  ranges = lidar_data[0, :]
+    _, lidar_data = read_data_from_csv('data/sensor_data/lidar.csv')
+    angles = np.linspace(-5, 185, 286) / 180 * np.pi
+    ranges = lidar_data[0, :]
 
-  # take valid indices
-  indValid = np.logical_and((ranges < 80),(ranges> 0.1))
-  ranges = ranges[indValid]
-  angles = angles[indValid]
+    # take valid indices
+    indValid = np.logical_and((ranges < 80),(ranges> 0.1))
+    ranges = ranges[indValid]
+    angles = angles[indValid]
 
-  # init MAP
-  MAP = {}
-  MAP['res']   = 0.1 #meters
-  MAP['xmin']  = -50  #meters
-  MAP['ymin']  = -50
-  MAP['xmax']  =  50
-  MAP['ymax']  =  50 
-  MAP['sizex']  = int(np.ceil((MAP['xmax'] - MAP['xmin']) / MAP['res'] + 1)) #cells
-  MAP['sizey']  = int(np.ceil((MAP['ymax'] - MAP['ymin']) / MAP['res'] + 1))
-  MAP['map'] = np.zeros((MAP['sizex'],MAP['sizey']),dtype=np.int8) #DATA TYPE: char or int8
-  
-  #import pdb
-  #pdb.set_trace()
-  
-  # xy position in the sensor frame
-  xs0 = ranges*np.cos(angles)
-  ys0 = ranges*np.sin(angles)
-  
-  # convert position in the map frame here 
-  Y = np.stack((xs0,ys0))
-  
-  # convert from meters to cells
-  xis = np.ceil((xs0 - MAP['xmin']) / MAP['res'] ).astype(np.int16)-1
-  yis = np.ceil((ys0 - MAP['ymin']) / MAP['res'] ).astype(np.int16)-1
-  
-  # build an arbitrary map 
-  indGood = np.logical_and(np.logical_and(np.logical_and((xis > 1), (yis > 1)), (xis < MAP['sizex'])), (yis < MAP['sizey']))
-  MAP['map'][xis[indGood],yis[indGood]]=1
-      
-  x_im = np.arange(MAP['xmin'],MAP['xmax']+MAP['res'],MAP['res']) #x-positions of each pixel of the map
-  y_im = np.arange(MAP['ymin'],MAP['ymax']+MAP['res'],MAP['res']) #y-positions of each pixel of the map
-
-  x_range = np.arange(-0.4,0.4+0.1,0.1)
-  y_range = np.arange(-0.4,0.4+0.1,0.1)
-
-
-  
-  print("Testing map_correlation with {}x{} cells".format(MAP['sizex'],MAP['sizey']))
-  ts = tic()
-  c = mapCorrelation(MAP['map'],x_im,y_im,Y,x_range,y_range)
-  print(c)
-  toc(ts,"Map Correlation")
-
-  c_ex = np.array([[ 4.,  6.,  6.,  5.,  8.,  6.,  3.,  2.,  0.],
-                   [ 7.,  5., 11.,  8.,  5.,  8.,  5.,  4.,  2.],
-                   [ 5.,  7., 11.,  8., 12.,  5.,  2.,  1.,  5.],
-                   [ 6.,  8., 13., 66., 33.,  4.,  3.,  3.,  0.],
-                   [ 5.,  9.,  9., 63., 55., 13.,  5.,  7.,  4.],
-                   [ 1.,  1., 11., 15., 12., 13.,  6., 10.,  7.],
-                   [ 2.,  5.,  7., 11.,  7.,  8.,  8.,  6.,  4.],
-                   [ 3.,  6.,  9.,  8.,  7.,  7.,  4.,  4.,  3.],
-                   [ 2.,  3.,  2.,  6.,  8.,  4.,  5.,  5.,  0.]])
+    # init MAP
+    MAP = {}
+    MAP['res']   = 0.1 #meters
+    MAP['xmin']  = -50  #meters
+    MAP['ymin']  = -50
+    MAP['xmax']  =  50
+    MAP['ymax']  =  50 
+    MAP['sizex']  = int(np.ceil((MAP['xmax'] - MAP['xmin']) / MAP['res'] + 1)) #cells
+    MAP['sizey']  = int(np.ceil((MAP['ymax'] - MAP['ymin']) / MAP['res'] + 1))
+    MAP['map'] = np.zeros((MAP['sizex'],MAP['sizey']),dtype=np.int8) #DATA TYPE: char or int8
     
-  if np.sum(c==c_ex) == np.size(c_ex):
-    print("...Test passed.")
-  else:
-    print("...Test failed. Close figures to continue tests.")	
+    #import pdb
+    #pdb.set_trace()
+    
+    # xy position in the sensor frame
+    xs0 = ranges*np.cos(angles)
+    ys0 = ranges*np.sin(angles)
+    
+    # convert position in the map frame here 
+    Y = np.stack((xs0,ys0))
+    
+    # convert from meters to cells
+    xis = np.ceil((xs0 - MAP['xmin']) / MAP['res'] ).astype(np.int16)-1
+    yis = np.ceil((ys0 - MAP['ymin']) / MAP['res'] ).astype(np.int16)-1
+    
+    # build an arbitrary map 
+    indGood = np.logical_and(np.logical_and(np.logical_and((xis > 1), (yis > 1)), (xis < MAP['sizex'])), (yis < MAP['sizey']))
+    MAP['map'][xis[indGood],yis[indGood]]=1
+        
+    x_im = np.arange(MAP['xmin'],MAP['xmax']+MAP['res'],MAP['res']) #x-positions of each pixel of the map
+    y_im = np.arange(MAP['ymin'],MAP['ymax']+MAP['res'],MAP['res']) #y-positions of each pixel of the map
 
-  #plot original lidar points
-  fig1 = plt.figure()
-  plt.plot(xs0,ys0,'.k')
-  plt.xlabel("x")
-  plt.ylabel("y")
-  plt.title("Laser reading")
-  plt.axis('equal')
+    x_range = np.arange(-0.4,0.4+0.1,0.1)
+    y_range = np.arange(-0.4,0.4+0.1,0.1)
 
-  #plot map
-  fig2 = plt.figure()
-  plt.imshow(MAP['map'],cmap="hot");
-  plt.title("Occupancy grid map")
-  
-  #plot correlation
-  fig3 = plt.figure()
-  ax3 = fig3.gca(projection='3d')
-  X, Y = np.meshgrid(np.arange(0,9), np.arange(0,9))
-  ax3.plot_surface(X,Y,c,linewidth=0,cmap=plt.cm.jet, antialiased=False,rstride=1, cstride=1)
-  plt.title("Correlation coefficient map")
 
-  plt.show()
-  
-  
+    
+    print("Testing map_correlation with {}x{} cells".format(MAP['sizex'],MAP['sizey']))
+    ts = tic()
+    c = mapCorrelation(MAP['map'],x_im,y_im,Y,x_range,y_range)
+    print(c)
+    toc(ts,"Map Correlation")
+
+    c_ex = np.array([[ 4.,  6.,  6.,  5.,  8.,  6.,  3.,  2.,  0.],
+                    [ 7.,  5., 11.,  8.,  5.,  8.,  5.,  4.,  2.],
+                    [ 5.,  7., 11.,  8., 12.,  5.,  2.,  1.,  5.],
+                    [ 6.,  8., 13., 66., 33.,  4.,  3.,  3.,  0.],
+                    [ 5.,  9.,  9., 63., 55., 13.,  5.,  7.,  4.],
+                    [ 1.,  1., 11., 15., 12., 13.,  6., 10.,  7.],
+                    [ 2.,  5.,  7., 11.,  7.,  8.,  8.,  6.,  4.],
+                    [ 3.,  6.,  9.,  8.,  7.,  7.,  4.,  4.,  3.],
+                    [ 2.,  3.,  2.,  6.,  8.,  4.,  5.,  5.,  0.]])
+        
+    if np.sum(c==c_ex) == np.size(c_ex):
+        print("...Test passed.")
+    else:
+        print("...Test failed. Close figures to continue tests.")	
+
+    #plot original lidar points
+    fig1 = plt.figure()
+    plt.plot(xs0,ys0,'.k')
+    plt.xlabel("x")
+    plt.ylabel("y")
+    plt.title("Laser reading")
+    plt.axis('equal')
+
+    #plot map
+    fig2 = plt.figure()
+    plt.imshow(MAP['map'],cmap="hot");
+    plt.title("Occupancy grid map")
+    
+    #plot correlation
+    fig3 = plt.figure()
+    ax3 = fig3.gca(projection='3d')
+    X, Y = np.meshgrid(np.arange(0,9), np.arange(0,9))
+    ax3.plot_surface(X,Y,c,linewidth=0,cmap=plt.cm.jet, antialiased=False,rstride=1, cstride=1)
+    plt.title("Correlation coefficient map")
+
+    plt.show()
+    
+    
 def show_lidar():
-  _, lidar_data = read_data_from_csv('data/sensor_data/lidar.csv')
-  angles = np.linspace(-5, 185, 286) / 180 * np.pi
-  ranges = lidar_data[0, :]
-  plt.figure()
-  ax = plt.subplot(111, projection='polar')
-  ax.plot(angles, ranges)
-  ax.set_rmax(80)
-  ax.set_rticks([0.5, 1, 1.5, 2])  # fewer radial ticks
-  ax.set_rlabel_position(-22.5)  # get radial labels away from plotted line
-  ax.grid(True)
-  ax.set_title("Lidar scan data", va='bottom')
-  plt.show()
+    _, lidar_data = read_data_from_csv('data/sensor_data/lidar.csv')
+    angles = np.linspace(-5, 185, 286) / 180 * np.pi
+    ranges = lidar_data[0, :]
+    plt.figure()
+    ax = plt.subplot(111, projection='polar')
+    ax.plot(angles, ranges)
+    ax.set_rmax(80)
+    ax.set_rticks([0.5, 1, 1.5, 2])  # fewer radial ticks
+    ax.set_rlabel_position(-22.5)  # get radial labels away from plotted line
+    ax.grid(True)
+    ax.set_title("Lidar scan data", va='bottom')
+    plt.show(block=True)
   
 
-def lidar_correction(lidar_data):
+def correct_lidar(lidar_data):
     # Correct lidar_data
     lidar_data[lidar_data == 0] = LIDAR_MAXRANGE
     return lidar_data
     
 
+def get_angular_velocity(fog_path):
+    # Get angular_velocity from FOG data
+    time_stamp, FOG_data = read_data_from_csv(fog_path)
+    time_difference = time_stamp[1:] - time_stamp[:-1]
+    angular_velocity = FOG_data[1:] / time_difference[:, None]
+    return time_stamp[:-1], angular_velocity
+
+
+def physics2map(map, xm, ym, xphy, yphy):
+    """
+    
+    Transform from physical coordinate to map index.
+    :param map: occupancy map
+    :param xm: x position of map (physical)
+    :param ym: y position of map (physical)
+    :param xphy: x physical coordinate of points
+    :param yphy: y physical coordinate of points
+    :return xidx: x index in map
+    :return yidx: y index in map
+
+    """
+    nx = map.shape[0]
+    ny = map.shape[1]
+    xmin = xm[0]
+    xmax = xm[-1]
+    xresolution = (xmax-xmin)/(nx-1)
+    ymin = ym[0]
+    ymax = ym[-1]
+    yresolution = (ymax-ymin)/(ny-1)
+    xidx = np.round((xphy - xmin) / xresolution)
+    yidx = np.round((yphy - ymin) / yresolution)
+    assert np.all(xidx > 0) and np.all(xidx < nx) and np.all(yidx > 0) and np.all(yidx < ny), "Point out of map!"
+    return xidx.astype(np.int16), yidx.astype(np.int16)
+
+
+def show_particles_on_map(map, xm, ym, position):
+    xidx, yidx = physics2map(map, xm, ym, position[0, :], position[1, :])
+    map[xidx, yidx] = 1
+    return map
+
+
+def get_velocity(encoder_path):
+    time_stamp, encoder_data = read_data_from_csv(encoder_path)
+    time_difference = time_stamp[1:] - time_stamp[:-1]
+    velocity = (encoder_data[1:] - encoder_data[:-1]) / time_difference[:, None]
+    velocity = velocity / ENCODER_RESOLUTION
+    velocity = velocity * pi * np.array([ENCODER_LEFT_DIAMETER, ENCODER_RIGHT_DIAMETER])
+    return time_stamp[:-1], np.mean(velocity, axis=1)
+
+
+def transform_2d_to_3d(position, orient):
+    rotation = np.array([[np.cos(orient), -np.sin(orient), 0], 
+                         [np.sin(orient), np.cos(orient),  0], 
+                         [0, 0, 1]])
+    return np.concatenate([position, np.zeros(1)]), rotation
+
+
 if __name__ == '__main__':
-  #compute_stereo()
-  #show_lidar()
-  test_mapCorrelation()
-  #test_bresenham2D()
-  
+    #compute_stereo()
+    show_lidar()
+    #test_mapCorrelation()
+    #test_bresenham2D()
+    pass

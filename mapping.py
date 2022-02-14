@@ -1,6 +1,6 @@
 import numpy as np
-from params import INIT_LOGODDS, LIDAR_ANGLE_COS, LIDAR_ANGLE_SIN, LIDAR_POSITION, LIDAR_ROTATION, LOGODDS_UPDATE
-from pr2_utils import bresenham2D
+from params import INIT_LOGODDS, LIDAR_ANGLE_COS, LIDAR_ANGLE_SIN, LIDAR_MAXRANGE, LIDAR_POSITION, LIDAR_ROTATION, LOGODDS_UPDATE
+from pr2_utils import bresenham2D, physics2map
 
 
 def create_map(x_begin, x_end, y_begin, y_end, grid_size):
@@ -30,33 +30,6 @@ def map2prob(map):
     return prob / (1 + prob)
 
 
-def physics2map(map, xm, ym, xphy, yphy):
-    """
-    
-    Transform from physical coordinate to map index.
-    :param map: occupancy map
-    :param xm: x position of map (physical)
-    :param ym: y position of map (physical)
-    :param xphy: x physical coordinate of points
-    :param yphy: y physical coordinate of points
-    :return xidx: x index in map
-    :return yidx: y index in map
-
-    """
-    nx = map.shape[0]
-    ny = map.shape[1]
-    xmin = xm[0]
-    xmax = xm[-1]
-    xresolution = (xmax-xmin)/(nx-1)
-    ymin = ym[0]
-    ymax = ym[-1]
-    yresolution = (ymax-ymin)/(ny-1)
-    xidx = np.round((xphy - xmin) / xresolution)
-    yidx = np.round((yphy - ymin) / yresolution)
-    assert np.all(xidx > 0) and np.all(xidx < nx) and np.all(yidx > 0) and np.all(yidx < ny), "Point out of map!"
-    return xidx, yidx
-
-
 def update_map(map, xm, ym, body_rotation, body_position, lidar_data):
     """
     
@@ -78,15 +51,17 @@ def update_map(map, xm, ym, body_rotation, body_position, lidar_data):
     # Compute LiDAR endpoints
     co_li_x = lidar_data * LIDAR_ANGLE_COS
     co_li_y = lidar_data * LIDAR_ANGLE_SIN
+    max_ranges = np.where(lidar_data == LIDAR_MAXRANGE)[0]
     co_wo = li2wo_position[:, None] + li2wo_rotation @ np.vstack([co_li_x, co_li_y, np.zeros_like(co_li_x)])
     Xidx, Yidx = physics2map(map, xm, ym, co_wo[0, :], co_wo[1, :])
 
     # Compute LiDAR startpoints
     X_start, Y_start = physics2map(map, xm, ym, li2wo_position[0], li2wo_position[1])
-    for x, y in zip(Xidx, Yidx):
+    for i, (x, y) in enumerate(zip(Xidx, Yidx)):
         path_idx = bresenham2D(X_start, Y_start, x, y)
         path_idx = path_idx.astype(np.int16)
         map[path_idx[0, :-1], path_idx[1, :-1]] -= LOGODDS_UPDATE
-        map[path_idx[0, -1], path_idx[1, -1]] += LOGODDS_UPDATE
+        if i not in max_ranges:
+            map[path_idx[0, -1], path_idx[1, -1]] += LOGODDS_UPDATE
 
     return map
