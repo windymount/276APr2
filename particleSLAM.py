@@ -68,8 +68,8 @@ def main(n_particles):
                 map = mapping.update_map(map, xm, ym, rotation, position, lidar_data[event_idx, :])
             # map = show_particles_on_map(map, xm, ym, p_position)
         if t_idx % STEPS_FIGURES == 0: 
-            plt.imshow(mapping.map2prob(map))
-            plt.savefig("img/step{}.jpg".format(t_idx))
+            plt.imshow(np.sign(map))
+            plt.savefig("img/step{}.png".format(t_idx), dpi=300)
             plt.show(block=True)
     plt.imshow(map)
     plt.show(block=True)

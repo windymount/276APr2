@@ -263,6 +263,7 @@ def show_lidar():
 def correct_lidar(lidar_data):
     # Correct lidar_data
     lidar_data[lidar_data == 0] = LIDAR_MAXRANGE
+    lidar_data[lidar_data > LIDAR_MAXRANGE] = LIDAR_MAXRANGE
     return lidar_data
     
 
