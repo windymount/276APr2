@@ -2,7 +2,7 @@ import mapping
 import particle_filter
 from matplotlib import pyplot as plt
 from pr2_utils import read_data_from_csv, correct_lidar, get_angular_velocity, get_velocity, show_particles_on_map, transform_2d_to_3d
-from params import NUM_PARTICLES
+from params import NUM_PARTICLES, STEPS_FIGURES
 import numpy as np
 
 
@@ -67,8 +67,9 @@ def main(n_particles):
                 position, rotation = transform_2d_to_3d(p_position[:, observer_id], p_orient[observer_id])
                 map = mapping.update_map(map, xm, ym, rotation, position, lidar_data[event_idx, :])
             # map = show_particles_on_map(map, xm, ym, p_position)
-        if t_idx % 100000 == 0: 
+        if t_idx % STEPS_FIGURES == 0: 
             plt.imshow(mapping.map2prob(map))
+            plt.savefig("img/step{}.jpg".format(t_idx))
             plt.show(block=True)
     plt.imshow(map)
     plt.show(block=True)
