@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt; plt.ion()
 from mpl_toolkits.mplot3d import Axes3D
 from params import LIDAR_MAXRANGE, ENCODER_LEFT_DIAMETER, ENCODER_RESOLUTION, ENCODER_RIGHT_DIAMETER
 import time
+import pdb
 
 def tic():
     return time.time()
@@ -38,7 +39,7 @@ def compute_stereo():
     ax2.set_title('Right Image')
     ax3.imshow(disparity, cmap='gray')
     ax3.set_title('Disparity Map')
-    plt.show()
+    plt.show(block=True)
     
 
 def read_data_from_csv(filename):
@@ -87,6 +88,31 @@ def mapCorrelation(im, x_im, y_im, vp, xs, ys):
             valid = np.logical_and( np.logical_and((iy >=0), (iy < ny)), \
                                     np.logical_and((ix >=0), (ix < nx)))
             cpr[jx,jy] = np.sum(im[ix[valid],iy[valid]])
+    return cpr
+
+
+def my_map_correlation(im, x_im, y_im, vp, ptype):
+    """
+    
+    Slightly changed MapCorrelation.
+    Add ptype which specify we expect an obstacle(1) or free(0)
+    
+    """
+    nx = im.shape[0]
+    ny = im.shape[1]
+    xmin = x_im[0]
+    xmax = x_im[-1]
+    xresolution = (xmax-xmin)/(nx-1)
+    ymin = y_im[0]
+    ymax = y_im[-1]
+    yresolution = (ymax-ymin)/(ny-1)
+    y1 = vp[1,:] # 1 x 1076
+    iy = np.int16(np.round((y1-ymin)/yresolution))
+    x1 = vp[0,:] # 1 x 1076
+    ix = np.int16(np.round((x1-xmin)/xresolution))
+    points = im[ix,iy]
+    cpr = np.sum(points * ptype) - np.sum(np.log(1 + np.exp(points)))
+    # pdb.set_trace()
     return cpr
 
 
@@ -324,9 +350,14 @@ def transform_2d_to_3d(position, orient):
     return np.concatenate([position, np.zeros(1)]), rotation
 
 
+def transform_orient_to_mat(orient):
+    m_cos, m_sin = np.cos(orient), np.sin(orient)
+    return np.reshape(np.transpose(np.array([[m_cos, -m_sin], [m_sin, m_cos]]),axes=[2, 0, 1]), newshape=(-1, 2))
+
 if __name__ == '__main__':
     #compute_stereo()
-    show_lidar()
+    #show_lidar()
     #test_mapCorrelation()
     #test_bresenham2D()
+    # print(transform_orient_to_mat(np.array([0, 1.57])))
     pass
