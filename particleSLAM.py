@@ -4,6 +4,7 @@ from matplotlib import pyplot as plt
 from pr2_utils import read_data_from_csv, correct_lidar, get_angular_velocity, get_velocity, show_particles_on_map, transform_2d_to_3d
 from params import MAP_RESOLUTION, MAP_SIZE, NUM_PARTICLES, STEPS_FIGURES
 import numpy as np
+import cProfile
 
 
 def main(n_particles):
@@ -69,10 +70,11 @@ def main(n_particles):
                 p_weight = particle_filter.update_particles(p_position, p_orient, p_weight, c_lidar, map, xm, ym)
                 map = mapping.update_map(map, xm, ym, rotation, position, c_lidar)
             # map = show_particles_on_map(map, xm, ym, p_position)
-        if t_idx % STEPS_FIGURES == 0: 
+        if t_idx and t_idx % STEPS_FIGURES == 0: 
             plt.imshow(np.sign(map))
-            plt.savefig("img/step{}.png".format(t_idx), dpi=300)
-            plt.show(block=True)
+            plt.savefig("img/step{}.png".format(t_idx), dpi=600)
+            # plt.show(block=True)
+
     plt.imshow(map)
     plt.show(block=True)
 
