@@ -69,6 +69,7 @@ def main(n_particles):
                 c_lidar = lidar_data[event_idx, :]
                 p_weight = particle_filter.update_particles(p_position, p_orient, p_weight, c_lidar, map, xm, ym)
                 map = mapping.update_map(map, xm, ym, rotation, position, c_lidar)
+                p_position, p_orient, p_weight = particle_filter.resample_particles(p_position, p_orient, p_weight)
             # map = show_particles_on_map(map, xm, ym, p_position)
         if t_idx and t_idx % STEPS_FIGURES == 0: 
             plt.imshow(np.sign(map))

@@ -1,6 +1,6 @@
 import numpy as np
 from mapping import physics2map
-from params import LIDAR_ANGLE_COS, LIDAR_ANGLE_SIN, LIDAR_MAXRANGE, LIDAR_POSITION, LIDAR_ROTATION, N_LIDAR_SAMPLES, VELOCITY_NOISE, A_VELOCITY_NOISE
+from params import LIDAR_ANGLE_COS, LIDAR_ANGLE_SIN, LIDAR_MAXRANGE, LIDAR_POSITION, LIDAR_ROTATION, N_LIDAR_SAMPLES, RESAMPLE_THRESHOLD, VELOCITY_NOISE, A_VELOCITY_NOISE
 from pr2_utils import mapCorrelation, my_map_correlation, transform_2d_to_3d, transform_orient_to_mat
 
 
@@ -16,7 +16,7 @@ def create_particles(n):
     """
     position = np.zeros((2, n))
     orient = np.zeros((n, ))
-    weight = np.ones((n, ))
+    weight = np.ones((n, )) / n
     return position, orient, weight
 
 
@@ -94,6 +94,16 @@ def update_particles(position, orient, weights, lidar_data, map, xm, ym):
     updated_weights /= np.sum(updated_weights)
     return updated_weights
 
+
+def resample_particles(position, orient, weights):
+    # Resample particles if effective particles too few.
+    n_particles = len(weights)
+    eff_particles = 1 / np.sum(weights ** 2)
+    if eff_particles / n_particles < RESAMPLE_THRESHOLD:
+        idxes = np.random.choice(range(n_particles), size=n_particles, replace=True, p=weights)
+        return position[:, idxes], orient[idxes], np.ones_like(weights) / n_particles
+    else:
+        return position, orient, weights
 
 
 
