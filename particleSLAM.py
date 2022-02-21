@@ -2,7 +2,7 @@ import mapping
 import particle_filter
 from matplotlib import pyplot as plt
 from pr2_utils import physics2map, read_data_from_csv, correct_lidar, get_angular_velocity, get_velocity, show_particles_on_map, transform_2d_to_3d
-from params import MAP_RESOLUTION, MAP_SIZE, NUM_PARTICLES, STEPS_FIGURES
+from params import MAP_RESOLUTION, MAP_SIZE, NUM_PARTICLES, STEPS_FIGURES, STEPS_TRAJECTORY
 import numpy as np
 import warnings
 warnings.filterwarnings("error")
@@ -11,7 +11,6 @@ warnings.filterwarnings("error")
 def main(n_particles):
     # Initialize map
     map, xm, ym = mapping.create_map(*MAP_SIZE, MAP_RESOLUTION)
-    particle_map = np.zeros_like(map, dtype=np.int8)
     # Read and process sensor data
     lidar_time, lidar_data = read_data_from_csv("data/sensor_data/lidar.csv")
     lidar_data = correct_lidar(lidar_data)
@@ -19,7 +18,7 @@ def main(n_particles):
     a_time, a_data = get_angular_velocity("data/sensor_data/fog.csv")
     # Read disparity map
     disparity = np.load("data/disparity.npy")
-    stereo_time = np.load("time_stamp.npy")
+    stereo_time = np.load("data/time_stamp.npy")
     # Create event series
     event_map = {}
 
@@ -40,6 +39,7 @@ def main(n_particles):
     # Create particles
     p_position, p_orient, p_weight = particle_filter.create_particles(NUM_PARTICLES)
     p_v, p_av, last_predict = None, None, None
+    traj_x, traj_y = [], []
     for t_idx, t in enumerate(timeline):
         events = event_map[t]
         for event in events:
@@ -69,7 +69,6 @@ def main(n_particles):
             elif event_type == "lidar":
                 # Record partcles
                 xidx, yidx = physics2map(map, xm, ym, p_position[0, :], p_position[1, :])
-                particle_map[xidx, yidx] = 1
                 # Update map using lidar info and update particle weights
                 observer_id = np.argmax(p_weight)
                 position, rotation = transform_2d_to_3d(p_position[:, observer_id], p_orient[observer_id])
@@ -81,10 +80,16 @@ def main(n_particles):
             elif event_type == "stereo":
                 pass
             # map = show_particles_on_map(map, xm, ym, p_position)
+        if t_idx % STEPS_TRAJECTORY == 0:
+            xidx, yidx = physics2map(map, xm, ym, p_position[0, :], p_position[1, :])
+            traj_x.append(xidx)
+            traj_y.append(yidx)
+
         if t_idx and t_idx % STEPS_FIGURES == 0: 
             plt.imshow(np.sign(map).T)
-            xidx, yidx = physics2map(map, xm, ym, p_position[0, :], p_position[1, :])
-            plt.scatter(np.where(), s=0.01, c='r')
+            x_trajs, y_trajs = np.vstack(traj_x), np.vstack(traj_y)
+            cur_particle = np.argmax(p_weight)
+            plt.plot(x_trajs[:, :], y_trajs[:, :], color="red", linewidth=0.1)
             plt.savefig("img/step{}.png".format(t_idx), dpi=600)
             plt.cla() 
             plt.clf() 
