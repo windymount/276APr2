@@ -11,13 +11,15 @@ warnings.filterwarnings("error")
 def main(n_particles):
     # Initialize map
     map, xm, ym = mapping.create_map(*MAP_SIZE, MAP_RESOLUTION)
-
+    particle_map = np.zeros_like(map, dtype=np.int8)
     # Read and process sensor data
     lidar_time, lidar_data = read_data_from_csv("data/sensor_data/lidar.csv")
     lidar_data = correct_lidar(lidar_data)
     v_time, v_data = get_velocity("data/sensor_data/encoder.csv")
     a_time, a_data = get_angular_velocity("data/sensor_data/fog.csv")
-
+    # Read disparity map
+    disparity = np.load("data/disparity.npy")
+    stereo_time = np.load("time_stamp.npy")
     # Create event series
     event_map = {}
 
@@ -32,6 +34,7 @@ def main(n_particles):
     event_map = add_to_map(lidar_time, event_map, "lidar")
     event_map = add_to_map(v_time, event_map, "v")
     event_map = add_to_map(a_time, event_map, "a")
+    evnet_map = add_to_map(stereo_time, event_map, "stereo")
     timeline = sorted(event_map.keys())
 
     # Create particles
@@ -64,6 +67,9 @@ def main(n_particles):
                     last_predict = t
 
             elif event_type == "lidar":
+                # Record partcles
+                xidx, yidx = physics2map(map, xm, ym, p_position[0, :], p_position[1, :])
+                particle_map[xidx, yidx] = 1
                 # Update map using lidar info and update particle weights
                 observer_id = np.argmax(p_weight)
                 position, rotation = transform_2d_to_3d(p_position[:, observer_id], p_orient[observer_id])
@@ -71,11 +77,14 @@ def main(n_particles):
                 p_weight = particle_filter.update_particles(p_position, p_orient, p_weight, c_lidar, map, xm, ym)
                 map = mapping.update_map(map, xm, ym, rotation, position, c_lidar)
                 p_position, p_orient, p_weight = particle_filter.resample_particles(p_position, p_orient, p_weight)
+            
+            elif event_type == "stereo":
+                pass
             # map = show_particles_on_map(map, xm, ym, p_position)
         if t_idx and t_idx % STEPS_FIGURES == 0: 
             plt.imshow(np.sign(map).T)
             xidx, yidx = physics2map(map, xm, ym, p_position[0, :], p_position[1, :])
-            plt.scatter(xidx, yidx, s=0.01, c='r')
+            plt.scatter(np.where(), s=0.01, c='r')
             plt.savefig("img/step{}.png".format(t_idx), dpi=600)
             plt.cla() 
             plt.clf() 

@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt; plt.ion()
 from mpl_toolkits.mplot3d import Axes3D
-from params import LIDAR_MAXRANGE, ENCODER_LEFT_DIAMETER, ENCODER_RESOLUTION, ENCODER_RIGHT_DIAMETER
+from params import LIDAR_MAXRANGE, ENCODER_LEFT_DIAMETER, ENCODER_RESOLUTION, ENCODER_RIGHT_DIAMETER, STEREO_BASELINE, STEREO_IMG_HEIGHT, STEREO_IMG_WIDTH, STEREO_LEFT_CAMERA
 import time
 import pdb
 import os
@@ -35,19 +35,43 @@ def compute_stereo():
         image_r_gray = cv2.cvtColor(image_r, cv2.COLOR_BGR2GRAY)
 
         if disparity_array is None:
-            disparity_array = np.zeros((len(os.listdir(path_l)), *image_l.shape[:-1]))
+            disparity_array = np.zeros((len(os.listdir(path_l)), *image_l.shape[:-1]), dtype=np.uint16)
         # You may need to fine-tune the variables `numDisparities` and `blockSize` based on the desired accuracy
         disparity = stereo.compute(image_l_gray, image_r_gray)
         disparity_array[i, :, :] = disparity
         time_stamp_array[i] = time_stamp
-    nonzero_idx = time_stamp_array != 0
+    nonzero_idx = (time_stamp_array != 0)
     time_stamp_array, disparity_array = time_stamp_array[nonzero_idx], disparity_array[nonzero_idx]
     np.save("data/disparity.npy", disparity_array)
     np.save("data/time_stamp.npy", time_stamp_array)
 
+
+def calculate_camera():
+    # Calculate transformation from camera parameters. (For further recover 3d coordinate from depth)
+    inv_mat = np.linalg.inv(STEREO_LEFT_CAMERA)
+    map_x, map_y = np.meshgrid(np.arange(STEREO_IMG_HEIGHT), np.arange(STEREO_IMG_WIDTH))
+    map_co = np.concatenate(map_x, map_y, np.ones_like(map_x))
+    world_co = np.einsum("ij,jkl", inv_mat, map_co)
+    return world_co
+
+
+def recover_space_coordinate(camera_trans, disparity):
+    """
     
-def compute_depth_from_stereo():
-    pass    
+    Recover 3D coordinate for each pixel. (In camera frame)
+    
+    """
+    fsu = STEREO_LEFT_CAMERA[0, 0]
+    valid_idx = disparity > 0
+    depth_map = np.zeros_like(disparity, dtype=np.float32)
+    depth_map[valid_idx] = fsu * STEREO_BASELINE / disparity[valid_idx]
+    world_co = camera_trans * depth_map
+    # Optical to Regular
+    world_co = world_co[[2, 0, 1], :, :]
+    world_co[1:, :, :] *= -1
+    return world_co
+
+
 
 def read_data_from_csv(filename):
     '''
