@@ -8,6 +8,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from params import LIDAR_MAXRANGE, ENCODER_LEFT_DIAMETER, ENCODER_RESOLUTION, ENCODER_RIGHT_DIAMETER
 import time
 import pdb
+import os
 
 def tic():
     return time.time()
@@ -16,30 +17,35 @@ def toc(tstart, name="Operation"):
 
 
 def compute_stereo():
-    path_l = 'data/image_left.png'
-    path_r = 'data/image_right.png'
-
-    image_l = cv2.imread(path_l, 0)
-    image_r = cv2.imread(path_r, 0)
-
-    image_l = cv2.cvtColor(image_l, cv2.COLOR_BAYER_BG2BGR)
-    image_r = cv2.cvtColor(image_r, cv2.COLOR_BAYER_BG2BGR)
-
-    image_l_gray = cv2.cvtColor(image_l, cv2.COLOR_BGR2GRAY)
-    image_r_gray = cv2.cvtColor(image_r, cv2.COLOR_BGR2GRAY)
-
-    # You may need to fine-tune the variables `numDisparities` and `blockSize` based on the desired accuracy
+    path_l = 'data/stereo_left'
+    path_r = 'data/stereo_right'
     stereo = cv2.StereoBM_create(numDisparities=32, blockSize=9) 
-    disparity = stereo.compute(image_l_gray, image_r_gray)
+    time_stamp_array = np.zeros(len(os.listdir(path_l)), dtype=np.int64)
+    disparity_array = None
+    for i, filename in enumerate(os.listdir(path_l)):
+        time_stamp = os.path.splitext(filename)[0]
+        image_l = cv2.imread(os.path.join(path_l, filename), 0)
+        image_r = cv2.imread(os.path.join(path_r, filename), 0)
+        if image_l is None or image_r is None:
+            continue
+        image_l = cv2.cvtColor(image_l, cv2.COLOR_BAYER_BG2BGR)
+        image_r = cv2.cvtColor(image_r, cv2.COLOR_BAYER_BG2BGR)
 
-    fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
-    ax1.imshow(image_l)
-    ax1.set_title('Left Image')
-    ax2.imshow(image_r)
-    ax2.set_title('Right Image')
-    ax3.imshow(disparity, cmap='gray')
-    ax3.set_title('Disparity Map')
-    plt.show(block=True)
+        image_l_gray = cv2.cvtColor(image_l, cv2.COLOR_BGR2GRAY)
+        image_r_gray = cv2.cvtColor(image_r, cv2.COLOR_BGR2GRAY)
+
+        if disparity_array is None:
+            disparity_array = np.zeros((len(os.listdir(path_l)), *image_l.shape[:-1]))
+        # You may need to fine-tune the variables `numDisparities` and `blockSize` based on the desired accuracy
+        disparity = stereo.compute(image_l_gray, image_r_gray)
+        disparity_array[i, :, :] = disparity
+        time_stamp_array[i] = time_stamp
+    nonzero_idx = time_stamp_array != 0
+    time_stamp_array, disparity_array = time_stamp_array[nonzero_idx], disparity_array[nonzero_idx]
+    np.save("data/disparity.npy", disparity_array)
+    np.save("data/time_stamp.npy", time_stamp_array)
+
+    
     
 
 def read_data_from_csv(filename):
@@ -355,7 +361,7 @@ def transform_orient_to_mat(orient):
     return np.reshape(np.transpose(np.array([[m_cos, -m_sin], [m_sin, m_cos]]),axes=[2, 0, 1]), newshape=(-1, 2))
 
 if __name__ == '__main__':
-    #compute_stereo()
+    compute_stereo()
     #show_lidar()
     #test_mapCorrelation()
     #test_bresenham2D()
