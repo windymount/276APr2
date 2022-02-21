@@ -88,8 +88,8 @@ def main(n_particles):
         if t_idx and t_idx % STEPS_FIGURES == 0: 
             plt.imshow(np.sign(map).T)
             x_trajs, y_trajs = np.vstack(traj_x), np.vstack(traj_y)
-            cur_particle = np.argmax(p_weight)
-            plt.plot(x_trajs[:, :], y_trajs[:, :], color="red", linewidth=0.1)
+            plt.plot(x_trajs, y_trajs, color="red", linewidth=0.1)
+            plt.axis("off")
             plt.savefig("img/step{}.png".format(t_idx), dpi=600)
             plt.cla() 
             plt.clf() 
