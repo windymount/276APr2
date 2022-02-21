@@ -74,6 +74,7 @@ def main(n_particles):
         if t_idx and t_idx % STEPS_FIGURES == 0: 
             plt.imshow(np.sign(map))
             plt.savefig("img/step{}.png".format(t_idx), dpi=600)
+            plt.close()
             # plt.show(block=True)
 
     plt.imshow(map)
