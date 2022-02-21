@@ -1,10 +1,11 @@
 import mapping
 import particle_filter
 from matplotlib import pyplot as plt
-from pr2_utils import read_data_from_csv, correct_lidar, get_angular_velocity, get_velocity, show_particles_on_map, transform_2d_to_3d
+from pr2_utils import physics2map, read_data_from_csv, correct_lidar, get_angular_velocity, get_velocity, show_particles_on_map, transform_2d_to_3d
 from params import MAP_RESOLUTION, MAP_SIZE, NUM_PARTICLES, STEPS_FIGURES
 import numpy as np
-import cProfile
+import warnings
+warnings.filterwarnings("error")
 
 
 def main(n_particles):
@@ -72,13 +73,14 @@ def main(n_particles):
                 p_position, p_orient, p_weight = particle_filter.resample_particles(p_position, p_orient, p_weight)
             # map = show_particles_on_map(map, xm, ym, p_position)
         if t_idx and t_idx % STEPS_FIGURES == 0: 
-            plt.imshow(np.sign(map))
+            plt.imshow(np.sign(map).T)
+            xidx, yidx = physics2map(map, xm, ym, p_position[0, :], p_position[1, :])
+            plt.scatter(xidx, yidx, s=0.01, c='r')
             plt.savefig("img/step{}.png".format(t_idx), dpi=600)
-            plt.close()
+            plt.cla() 
+            plt.clf() 
+            plt.close('all')
             # plt.show(block=True)
-
-    plt.imshow(map)
-    plt.show(block=True)
 
 if __name__ == "__main__":
     main(NUM_PARTICLES)

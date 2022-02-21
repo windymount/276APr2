@@ -46,7 +46,8 @@ def compute_stereo():
     np.save("data/time_stamp.npy", time_stamp_array)
 
     
-    
+def compute_depth_from_stereo():
+    pass    
 
 def read_data_from_csv(filename):
     '''
@@ -118,7 +119,6 @@ def my_map_correlation(im, x_im, y_im, vp, ptype):
     ix = np.int16(np.round((x1-xmin)/xresolution))
     points = im[ix,iy]
     cpr = np.sum(points * ptype) - np.sum(np.log(1 + np.exp(points)))
-    # pdb.set_trace()
     return cpr
 
 

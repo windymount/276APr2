@@ -89,7 +89,7 @@ def update_particles(position, orient, weights, lidar_data, map, xm, ym):
         hit_obstacle[-1, :][max_ranges] = 1
         hit_obstacle = hit_obstacle.reshape(-1)
         particle_weights[particle] = my_map_correlation(map, xm, ym, np.vstack([x_co.reshape(-1), y_co.reshape(-1)]), hit_obstacle)
-    particle_weights /= len(hit_obstacle)
+    # particle_weights /= len(hit_obstacle)
     updated_weights = (weights * np.exp(particle_weights-np.max(particle_weights)))
     updated_weights /= np.sum(updated_weights)
     return updated_weights

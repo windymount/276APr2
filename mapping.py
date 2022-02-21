@@ -1,5 +1,5 @@
 import numpy as np
-from params import INIT_LOGODDS, LIDAR_ANGLE_COS, LIDAR_ANGLE_SIN, LIDAR_MAXRANGE, LIDAR_POSITION, LIDAR_ROTATION, LOGODDS_UPDATE
+from params import INIT_LOGODDS, LIDAR_ANGLE_COS, LIDAR_ANGLE_SIN, LIDAR_MAXRANGE, LIDAR_POSITION, LIDAR_ROTATION, LOGODDS_LOWER, LOGODDS_UPDATE, LOGODDS_UPPER
 from pr2_utils import bresenham2D, physics2map
 
 
@@ -63,5 +63,13 @@ def update_map(map, xm, ym, body_rotation, body_position, lidar_data):
         map[path_idx[0, :-1], path_idx[1, :-1]] -= LOGODDS_UPDATE
         if i not in max_ranges:
             map[path_idx[0, -1], path_idx[1, -1]] += LOGODDS_UPDATE
-
+        map[path_idx[0, :], path_idx[1, :]] = np.minimum(np.maximum(map[path_idx[0, :], path_idx[1, :]], LOGODDS_LOWER), LOGODDS_UPPER)
     return map
+
+
+def draw_map_from_stereo(map, xm, ym, stereo_img_l, disparity):
+    """
+    
+    Mark point at map with RGB color.
+    
+    """
