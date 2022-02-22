@@ -46,7 +46,7 @@ def update_map(map, xm, ym, body_rotation, body_position, lidar_data):
     """
     # Compute LiDAR to world transform
     li2wo_rotation = body_rotation @ LIDAR_ROTATION
-    li2wo_position = body_position + LIDAR_POSITION
+    li2wo_position = body_position + body_rotation @ LIDAR_POSITION
 
     # Compute LiDAR endpoints
     co_li_x = lidar_data * LIDAR_ANGLE_COS

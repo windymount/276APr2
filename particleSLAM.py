@@ -1,11 +1,11 @@
 import mapping
 import particle_filter
 from matplotlib import pyplot as plt
-from pr2_utils import physics2map, read_data_from_csv, correct_lidar, get_angular_velocity, get_velocity, show_particles_on_map, transform_2d_to_3d
-from params import MAP_RESOLUTION, MAP_SIZE, NUM_PARTICLES, STEPS_FIGURES, STEPS_TRAJECTORY
+from pr2_utils import calculate_camera, physics2map, read_data_from_csv, correct_lidar, get_angular_velocity, get_velocity, recover_space_coordinate, show_particles_on_map, transform_2d_to_3d
+from params import MAP_RESOLUTION, MAP_SIZE, NUM_PARTICLES, STEPS_FIGURES, STEPS_TRAJECTORY, STEREO_POSITION, STEREO_ROTATION
 import numpy as np
 import warnings
-warnings.filterwarnings("error")
+import gc
 
 
 def main(n_particles):
@@ -19,6 +19,7 @@ def main(n_particles):
     # Read disparity map
     disparity = np.load("data/disparity.npy")
     stereo_time = np.load("data/time_stamp.npy")
+    camera_transition = calculate_camera()
     # Create event series
     event_map = {}
 
@@ -78,8 +79,18 @@ def main(n_particles):
                 p_position, p_orient, p_weight = particle_filter.resample_particles(p_position, p_orient, p_weight)
             
             elif event_type == "stereo":
-                pass
-            # map = show_particles_on_map(map, xm, ym, p_position)
+                continue
+                disparity_map = disparity[event_idx, :, :]
+                camera_co = recover_space_coordinate(camera_transition, disparity_map)
+                valid_idx = disparity_map > 0
+                target_co = camera_co[:, valid_idx]
+                observer_id = np.argmax(p_weight)
+                position, rotation = transform_2d_to_3d(p_position[:, observer_id], p_orient[observer_id])
+                st2wo_rotation = rotation @ STEREO_ROTATION
+                st2wo_position = position + rotation @ STEREO_POSITION
+                world_co = st2wo_position + np.einsum("ij,jkl", st2wo_rotation, camera_co)
+                # Compute camera to world transform
+
         if t_idx % STEPS_TRAJECTORY == 0:
             xidx, yidx = physics2map(map, xm, ym, p_position[0, :], p_position[1, :])
             traj_x.append(xidx)
@@ -94,6 +105,7 @@ def main(n_particles):
             plt.cla() 
             plt.clf() 
             plt.close('all')
+            gc.collect()
             # plt.show(block=True)
 
 if __name__ == "__main__":

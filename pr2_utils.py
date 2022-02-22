@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt; plt.ion()
 from mpl_toolkits.mplot3d import Axes3D
 from params import LIDAR_MAXRANGE, ENCODER_LEFT_DIAMETER, ENCODER_RESOLUTION, ENCODER_RIGHT_DIAMETER, STEREO_BASELINE, STEREO_IMG_HEIGHT, STEREO_IMG_WIDTH, STEREO_LEFT_CAMERA
 import time
-import pdb
 import os
 
 def tic():
@@ -50,7 +49,7 @@ def calculate_camera():
     # Calculate transformation from camera parameters. (For further recover 3d coordinate from depth)
     inv_mat = np.linalg.inv(STEREO_LEFT_CAMERA)
     map_x, map_y = np.meshgrid(np.arange(STEREO_IMG_HEIGHT), np.arange(STEREO_IMG_WIDTH))
-    map_co = np.concatenate(map_x, map_y, np.ones_like(map_x))
+    map_co = np.stack((map_x, map_y, np.ones_like(map_x)))
     world_co = np.einsum("ij,jkl", inv_mat, map_co)
     return world_co
 

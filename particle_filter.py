@@ -71,7 +71,7 @@ def update_particles(position, orient, weights, lidar_data, map, xm, ym):
     body_rotation = transform_orient_to_mat(orient)
 
     li2wo_rotation = body_rotation @ LIDAR_ROTATION[0:2, 0:2]
-    li2wo_position = position + LIDAR_POSITION[0:2, None]
+    li2wo_position = position + np.reshape(body_rotation @ LIDAR_POSITION[0:2, None],(2, -1), order="F")
 
     # Compute LiDAR endpoints
     co_li_x = lidar_data * LIDAR_ANGLE_COS
