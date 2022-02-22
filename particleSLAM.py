@@ -45,6 +45,8 @@ def main(n_particles):
     p_position, p_orient, p_weight = particle_filter.create_particles(NUM_PARTICLES)
     p_v, p_av, last_predict = None, None, None
     traj_x, traj_y = [], []
+    if not os.path.exists(IMG_OUTPUT_PATH):
+        os.makedirs(IMG_OUTPUT_PATH)
     for t_idx, t in enumerate(timeline):
         events = event_map[t]
         for event in events:
@@ -122,13 +124,13 @@ def main(n_particles):
             plt.cla() 
             plt.clf() 
             plt.close('all')
-            plt.imshow(color_map.T, origin='lower')
-            plt.axis("off")
-            plt.savefig(os.path.join(IMG_OUTPUT_PATH, "step_c{}.png".format(t_idx)), dpi=600)
-            plt.cla() 
-            plt.clf() 
-            plt.close('all')
             gc.collect()
+    plt.imshow(color_map.T, origin='lower')
+    plt.axis("off")
+    plt.savefig(os.path.join(IMG_OUTPUT_PATH, "colormap.jpg"), dpi=600)
+    plt.cla() 
+    plt.clf() 
+    plt.close('all')
 
 if __name__ == "__main__":
     main(NUM_PARTICLES)
