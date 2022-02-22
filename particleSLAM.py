@@ -5,7 +5,7 @@ import mapping
 import particle_filter
 from matplotlib import pyplot as plt
 from pr2_utils import calculate_camera, physics2map, read_data_from_csv, correct_lidar, get_angular_velocity, get_velocity, recover_space_coordinate, show_particles_on_map, transform_2d_to_3d
-from params import MAP_RESOLUTION, MAP_SIZE, NUM_PARTICLES, STEPS_FIGURES, STEPS_TRAJECTORY, STEREO_POSITION, STEREO_ROTATION, STEREO_Z_RANGE
+from params import IMG_OUTPUT_PATH, MAP_RESOLUTION, MAP_SIZE, NUM_PARTICLES, STEPS_FIGURES, STEPS_TRAJECTORY, STEREO_POSITION, STEREO_ROTATION, STEREO_Z_RANGE
 import numpy as np
 import warnings
 import gc
@@ -118,13 +118,13 @@ def main(n_particles):
             x_trajs, y_trajs = np.vstack(traj_x), np.vstack(traj_y)
             plt.plot(x_trajs, y_trajs, color="red", linewidth=0.1)
             plt.axis("off")
-            plt.savefig("img/step{}.png".format(t_idx), dpi=600)
+            plt.savefig(os.path.join(IMG_OUTPUT_PATH, "step{}.png".format(t_idx)), dpi=600)
             plt.cla() 
             plt.clf() 
             plt.close('all')
             plt.imshow(color_map.T, origin='lower')
             plt.axis("off")
-            plt.savefig("img/step{}_c.png".format(t_idx), dpi=600)
+            plt.savefig(os.path.join(IMG_OUTPUT_PATH, "step_c{}.png".format(t_idx)), dpi=600)
             plt.cla() 
             plt.clf() 
             plt.close('all')
