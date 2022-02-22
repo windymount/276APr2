@@ -85,8 +85,8 @@ def main(n_particles):
             traj_x.append(xidx)
             traj_y.append(yidx)
 
-        if t_idx and t_idx % STEPS_FIGURES == 0: 
-            plt.imshow(np.sign(map).T)
+        if t_idx and t_idx % STEPS_FIGURES == 0:
+            plt.imshow(np.sign(map).T, origin='lower')
             x_trajs, y_trajs = np.vstack(traj_x), np.vstack(traj_y)
             plt.plot(x_trajs, y_trajs, color="red", linewidth=0.1)
             plt.axis("off")
