@@ -1,8 +1,11 @@
+import os
+
+import cv2
 import mapping
 import particle_filter
 from matplotlib import pyplot as plt
 from pr2_utils import calculate_camera, physics2map, read_data_from_csv, correct_lidar, get_angular_velocity, get_velocity, recover_space_coordinate, show_particles_on_map, transform_2d_to_3d
-from params import MAP_RESOLUTION, MAP_SIZE, NUM_PARTICLES, STEPS_FIGURES, STEPS_TRAJECTORY, STEREO_POSITION, STEREO_ROTATION
+from params import MAP_RESOLUTION, MAP_SIZE, NUM_PARTICLES, STEPS_FIGURES, STEPS_TRAJECTORY, STEREO_POSITION, STEREO_ROTATION, STEREO_Z_RANGE
 import numpy as np
 import warnings
 import gc
@@ -11,6 +14,7 @@ import gc
 def main(n_particles):
     # Initialize map
     map, xm, ym = mapping.create_map(*MAP_SIZE, MAP_RESOLUTION)
+    color_map = np.zeros((3, *map.shape), dtype=np.uint8)
     # Read and process sensor data
     lidar_time, lidar_data = read_data_from_csv("data/sensor_data/lidar.csv")
     lidar_data = correct_lidar(lidar_data)
@@ -34,7 +38,7 @@ def main(n_particles):
     event_map = add_to_map(lidar_time, event_map, "lidar")
     event_map = add_to_map(v_time, event_map, "v")
     event_map = add_to_map(a_time, event_map, "a")
-    evnet_map = add_to_map(stereo_time, event_map, "stereo")
+    event_map = add_to_map(stereo_time, event_map, "stereo")
     timeline = sorted(event_map.keys())
 
     # Create particles
@@ -79,16 +83,29 @@ def main(n_particles):
                 p_position, p_orient, p_weight = particle_filter.resample_particles(p_position, p_orient, p_weight)
             
             elif event_type == "stereo":
-                continue
+                # Read RGB image
+                path = os.path.join('data/stereo_left', "{}.png".format(stereo_time[event_idx]))
+                img = cv2.imread(path, 0)
+                img = cv2.cvtColor(img, cv2.COLOR_BAYER_BG2BGR)
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                 disparity_map = disparity[event_idx, :, :]
                 camera_co = recover_space_coordinate(camera_transition, disparity_map)
-                valid_idx = disparity_map > 0
-                target_co = camera_co[:, valid_idx]
+                valid_idx = (disparity_map > 0).reshape(-1)
+                target_co = camera_co.reshape((3, -1))[:, valid_idx]
+                img = img.reshape((3, -1))[:, valid_idx]
                 observer_id = np.argmax(p_weight)
                 position, rotation = transform_2d_to_3d(p_position[:, observer_id], p_orient[observer_id])
                 st2wo_rotation = rotation @ STEREO_ROTATION
                 st2wo_position = position + rotation @ STEREO_POSITION
-                world_co = st2wo_position + np.einsum("ij,jkl", st2wo_rotation, camera_co)
+                world_co = st2wo_position[:, None] + st2wo_rotation @ target_co
+                # Constrain z idx
+                zvalid_idx = np.logical_and((world_co[-1, :] < STEREO_Z_RANGE[1]), (world_co[-1, :] > STEREO_Z_RANGE[0]))
+                world_co = world_co[:-1, zvalid_idx]
+                img = img[:, zvalid_idx]
+                print("{} points detected!".format(world_co.shape[1]))
+                # Add to color map
+                xidx, yidx = physics2map(map, xm, ym, world_co[0, :], world_co[1, :])
+                color_map[:, xidx, yidx] = img
                 # Compute camera to world transform
 
         if t_idx % STEPS_TRAJECTORY == 0:
@@ -105,8 +122,13 @@ def main(n_particles):
             plt.cla() 
             plt.clf() 
             plt.close('all')
+            plt.imshow(color_map.T, origin='lower')
+            plt.axis("off")
+            plt.savefig("img/step{}_c.png".format(t_idx), dpi=600)
+            plt.cla() 
+            plt.clf() 
+            plt.close('all')
             gc.collect()
-            # plt.show(block=True)
 
 if __name__ == "__main__":
     main(NUM_PARTICLES)

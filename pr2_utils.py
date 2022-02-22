@@ -37,6 +37,7 @@ def compute_stereo():
             disparity_array = np.zeros((len(os.listdir(path_l)), *image_l.shape[:-1]), dtype=np.uint16)
         # You may need to fine-tune the variables `numDisparities` and `blockSize` based on the desired accuracy
         disparity = stereo.compute(image_l_gray, image_r_gray)
+        disparity[disparity < 0] = 0
         disparity_array[i, :, :] = disparity
         time_stamp_array[i] = time_stamp
     nonzero_idx = (time_stamp_array != 0)
@@ -48,7 +49,7 @@ def compute_stereo():
 def calculate_camera():
     # Calculate transformation from camera parameters. (For further recover 3d coordinate from depth)
     inv_mat = np.linalg.inv(STEREO_LEFT_CAMERA)
-    map_x, map_y = np.meshgrid(np.arange(STEREO_IMG_HEIGHT), np.arange(STEREO_IMG_WIDTH))
+    map_x, map_y = np.meshgrid(np.arange(STEREO_IMG_WIDTH), np.arange(STEREO_IMG_HEIGHT))
     map_co = np.stack((map_x, map_y, np.ones_like(map_x)))
     world_co = np.einsum("ij,jkl", inv_mat, map_co)
     return world_co
@@ -66,8 +67,8 @@ def recover_space_coordinate(camera_trans, disparity):
     depth_map[valid_idx] = fsu * STEREO_BASELINE / disparity[valid_idx]
     world_co = camera_trans * depth_map
     # Optical to Regular
-    world_co = world_co[[2, 0, 1], :, :]
-    world_co[1:, :, :] *= -1
+    # world_co = world_co[[2, 0, 1], :, :]
+    # world_co[1:, :, :] *= -1
     return world_co
 
 
