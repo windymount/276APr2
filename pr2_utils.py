@@ -88,13 +88,15 @@ def read_data_from_csv(filename):
     return timestamp, data
 
 
-def mapCorrelation(im, x_im, y_im, vp, xs, ys):
+def mapCorrelation(im, x_im, y_im, vp, xs, ys, ptype):
     '''
     INPUT 
     im              the map 
     x_im,y_im       physical x,y positions of the grid map cells
     vp[0:2,:]       occupied x,y positions from range sensor (in physical unit)  
     xs,ys           physical x,y,positions you want to evaluate "correlation" 
+    ptype           specify the point is occupied or free
+    
 
     OUTPUT 
     c               sum of the cell values of all the positions hit by range sensor
@@ -116,9 +118,8 @@ def mapCorrelation(im, x_im, y_im, vp, xs, ys):
         for jx in range(0,nxs):
             x1 = vp[0,:] + xs[jx] # 1 x 1076
             ix = np.int16(np.round((x1-xmin)/xresolution))
-            valid = np.logical_and( np.logical_and((iy >=0), (iy < ny)), \
-                                    np.logical_and((ix >=0), (ix < nx)))
-            cpr[jx,jy] = np.sum(im[ix[valid],iy[valid]])
+            points = im[ix,iy]
+            cpr[jx, jy] = np.sum(points * ptype) - np.sum(np.log(1 + np.exp(points)))
     return cpr
 
 
