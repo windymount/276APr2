@@ -1,5 +1,4 @@
 import os
-
 import cv2
 import mapping
 import particle_filter
@@ -7,7 +6,6 @@ from matplotlib import pyplot as plt
 from pr2_utils import calculate_camera, physics2map, read_data_from_csv, correct_lidar, get_angular_velocity, get_velocity, recover_space_coordinate, show_particles_on_map, transform_2d_to_3d
 from params import IMG_OUTPUT_PATH, MAP_RESOLUTION, MAP_SIZE, NUM_PARTICLES, STEPS_FIGURES, STEPS_TRAJECTORY, STEREO_POSITION, STEREO_ROTATION, STEREO_Z_RANGE
 import numpy as np
-import warnings
 import gc
 
 
@@ -89,21 +87,30 @@ def main(n_particles):
                 path = os.path.join('data/stereo_left', "{}.png".format(stereo_time[event_idx]))
                 img = cv2.imread(path, 0)
                 img = cv2.cvtColor(img, cv2.COLOR_BAYER_BG2BGR)
-                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                img_cp = np.zeros_like(img).reshape((-1, 3)).T.astype(np.float64)
                 disparity_map = disparity[event_idx, :, :]
                 camera_co = recover_space_coordinate(camera_transition, disparity_map)
                 valid_idx = (disparity_map > 0).reshape(-1)
                 target_co = camera_co.reshape((3, -1))[:, valid_idx]
-                img = img.reshape((3, -1))[:, valid_idx]
+                img = (img.reshape((-1, 3)).T)[:, valid_idx]
+                # img_cp[:, valid_idx] = img
                 observer_id = np.argmax(p_weight)
                 position, rotation = transform_2d_to_3d(p_position[:, observer_id], p_orient[observer_id])
                 st2wo_rotation = rotation @ STEREO_ROTATION
                 st2wo_position = position + rotation @ STEREO_POSITION
                 world_co = st2wo_position[:, None] + st2wo_rotation @ target_co
+                img_cp[:, valid_idx] = world_co
+                # plt.imshow(img_cp.reshape(3, 560, 1280)[1, :, :])
+                # plt.show(block=True)
                 # Constrain z idx
                 zvalid_idx = np.logical_and((world_co[-1, :] < STEREO_Z_RANGE[1]), (world_co[-1, :] > STEREO_Z_RANGE[0]))
+                img_cp[:, valid_idx] = img * zvalid_idx
                 world_co = world_co[:-1, zvalid_idx]
                 img = img[:, zvalid_idx]
+                # print(np.sum(zvalid_idx) / zvalid_idx.size)
+                # plt.imshow(img_cp.reshape(3, 560, 1280).transpose((1, 2, 0)))
+                # plt.show(block=True)
                 print("{} points detected!".format(world_co.shape[1]))
                 # Add to color map
                 xidx, yidx = physics2map(map, xm, ym, world_co[0, :], world_co[1, :])
