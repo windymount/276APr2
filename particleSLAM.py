@@ -4,9 +4,10 @@ import mapping
 import particle_filter
 from matplotlib import pyplot as plt
 from pr2_utils import calculate_camera, physics2map, read_data_from_csv, correct_lidar, get_angular_velocity, get_velocity, recover_space_coordinate, show_particles_on_map, transform_2d_to_3d
-from params import IMG_OUTPUT_PATH, MAP_RESOLUTION, MAP_SIZE, NUM_PARTICLES, STEPS_FIGURES, STEPS_TRAJECTORY, STEREO_POSITION, STEREO_ROTATION, STEREO_Z_RANGE
+from params import IMG_OUTPUT_PATH, MAP_RESOLUTION, MAP_SIZE, NUM_PARTICLES, STEPS_FIGURES, STEPS_TRAJECTORY, STEREO_POSITION, STEREO_ROTATION, STEREO_Z_RANGE, UPDATE_INTERVAL, MAPPING_INTERVAL
 import numpy as np
 import gc
+import shutil
 
 
 def main(n_particles):
@@ -45,6 +46,8 @@ def main(n_particles):
     traj_x, traj_y = [], []
     if not os.path.exists(IMG_OUTPUT_PATH):
         os.makedirs(IMG_OUTPUT_PATH)
+    # Copy parameters
+    shutil.copy("params.py", IMG_OUTPUT_PATH)
     for t_idx, t in enumerate(timeline):
         events = event_map[t]
         for event in events:
@@ -78,8 +81,10 @@ def main(n_particles):
                 observer_id = np.argmax(p_weight)
                 position, rotation = transform_2d_to_3d(p_position[:, observer_id], p_orient[observer_id])
                 c_lidar = lidar_data[event_idx, :]
-                p_weight = particle_filter.update_particles(p_position, p_orient, p_weight, c_lidar, map, xm, ym)
-                map = mapping.update_map(map, xm, ym, rotation, position, c_lidar)
+                if event_idx % UPDATE_INTERVAL == 0:
+                    p_weight = particle_filter.update_particles(p_position, p_orient, p_weight, c_lidar, map, xm, ym)
+                if event_idx % MAPPING_INTERVAL == 0:
+                    map = mapping.update_map(map, xm, ym, rotation, position, c_lidar)
                 p_position, p_orient, p_weight = particle_filter.resample_particles(p_position, p_orient, p_weight)
             
             elif event_type == "stereo":
@@ -131,6 +136,13 @@ def main(n_particles):
             plt.cla() 
             plt.clf() 
             plt.close('all')
+            plt.imshow(color_map.T, origin='lower')
+            plt.axis("off")
+            plt.savefig(os.path.join(IMG_OUTPUT_PATH, "step_c{}.png".format(t_idx)), dpi=600)
+            plt.cla() 
+            plt.clf() 
+            plt.close('all')
+
             gc.collect()
     plt.imshow(color_map.T, origin='lower')
     plt.axis("off")

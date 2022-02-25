@@ -1,6 +1,6 @@
 import numpy as np
 from mapping import physics2map
-from params import CORRELATION_SERACHGRID_SIZE, LIDAR_ANGLE_COS, LIDAR_ANGLE_SIN, LIDAR_MAXRANGE, LIDAR_POSITION, LIDAR_ROTATION, N_LIDAR_SAMPLES, RESAMPLE_THRESHOLD, VELOCITY_NOISE, A_VELOCITY_NOISE
+from params import CORRELATION_SEARCHGRID_SIZE, LIDAR_ANGLE_COS, LIDAR_ANGLE_SIN, LIDAR_MAXRANGE, LIDAR_POSITION, LIDAR_ROTATION, N_LIDAR_SAMPLES, RESAMPLE_THRESHOLD, VELOCITY_NOISE, A_VELOCITY_NOISE, CORRELATION_SEARCHGRID_NUM, UPDATE_SCALE_FACTOR
 from pr2_utils import mapCorrelation, my_map_correlation, transform_2d_to_3d, transform_orient_to_mat
 
 
@@ -83,8 +83,8 @@ def update_particles(position, orient, weights, lidar_data, map, xm, ym):
     # Iterate over particles
     for particle in range(co_wo.shape[1]):
         p_co_wo = co_wo[:, particle, :]
-        grid = np.linspace(-CORRELATION_SERACHGRID_SIZE, CORRELATION_SERACHGRID_SIZE, 3)
-        particle_weights[particle] = np.max(mapCorrelation(map, xm, ym, p_co_wo, grid, grid, max_ranges))
+        grid = np.linspace(-CORRELATION_SEARCHGRID_SIZE, CORRELATION_SEARCHGRID_SIZE, CORRELATION_SEARCHGRID_NUM)
+        particle_weights[particle] = np.max(mapCorrelation(map, xm, ym, p_co_wo, grid, grid, max_ranges)) * UPDATE_SCALE_FACTOR
     updated_weights = (weights * np.exp(particle_weights-np.max(particle_weights)))
     updated_weights /= np.sum(updated_weights)
     return updated_weights
