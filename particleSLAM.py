@@ -4,13 +4,13 @@ import mapping
 import particle_filter
 from matplotlib import pyplot as plt
 from pr2_utils import calculate_camera, physics2map, read_data_from_csv, correct_lidar, get_angular_velocity, get_velocity, recover_space_coordinate, show_particles_on_map, transform_2d_to_3d
-from params import IMG_OUTPUT_PATH, MAP_RESOLUTION, MAP_SIZE, NUM_PARTICLES, STEPS_FIGURES, STEPS_TRAJECTORY, STEREO_POSITION, STEREO_ROTATION, STEREO_Z_RANGE, UPDATE_INTERVAL, MAPPING_INTERVAL
+from params import MAP_RESOLUTION, MAP_SIZE, STEPS_FIGURES, STEPS_TRAJECTORY, STEREO_POSITION, STEREO_ROTATION, STEREO_Z_RANGE, UPDATE_INTERVAL, MAPPING_INTERVAL
 import numpy as np
 import gc
 import shutil
 
 
-def main(n_particles):
+def main(n_particles, output_path):
     # Initialize map
     map, xm, ym = mapping.create_map(*MAP_SIZE, MAP_RESOLUTION)
     color_map = np.zeros((3, *map.shape), dtype=np.uint8)
@@ -41,13 +41,13 @@ def main(n_particles):
     timeline = sorted(event_map.keys())
 
     # Create particles
-    p_position, p_orient, p_weight = particle_filter.create_particles(NUM_PARTICLES)
+    p_position, p_orient, p_weight = particle_filter.create_particles(n_particles)
     p_v, p_av, last_predict = None, None, None
     traj_x, traj_y = [], []
-    if not os.path.exists(IMG_OUTPUT_PATH):
-        os.makedirs(IMG_OUTPUT_PATH)
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
     # Copy parameters
-    shutil.copy("params.py", IMG_OUTPUT_PATH)
+    shutil.copy("params.py", output_path)
     for t_idx, t in enumerate(timeline):
         events = event_map[t]
         for event in events:
@@ -131,13 +131,13 @@ def main(n_particles):
             x_trajs, y_trajs = np.vstack(traj_x), np.vstack(traj_y)
             plt.plot(x_trajs, y_trajs, color="red", linewidth=0.1)
             plt.axis("off")
-            plt.savefig(os.path.join(IMG_OUTPUT_PATH, "step{}.png".format(t_idx)), dpi=600)
+            plt.savefig(os.path.join(output_path, "step{}.png".format(t_idx)), dpi=600)
             plt.cla() 
             plt.clf() 
             plt.close('all')
             plt.imshow(color_map.T, origin='lower')
             plt.axis("off")
-            plt.savefig(os.path.join(IMG_OUTPUT_PATH, "step_c{}.png".format(t_idx)), dpi=600)
+            plt.savefig(os.path.join(output_path, "step_c{}.png".format(t_idx)), dpi=600)
             plt.cla() 
             plt.clf() 
             plt.close('all')
@@ -145,10 +145,8 @@ def main(n_particles):
             gc.collect()
     plt.imshow(color_map.T, origin='lower')
     plt.axis("off")
-    plt.savefig(os.path.join(IMG_OUTPUT_PATH, "colormap.jpg"), dpi=600)
+    plt.savefig(os.path.join(output_path, "colormap.jpg"), dpi=600)
     plt.cla() 
     plt.clf() 
     plt.close('all')
 
-if __name__ == "__main__":
-    main(NUM_PARTICLES)
