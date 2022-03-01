@@ -116,7 +116,6 @@ def main(n_particles):
                 # print(np.sum(zvalid_idx) / zvalid_idx.size)
                 # plt.imshow(img_cp.reshape(3, 560, 1280).transpose((1, 2, 0)))
                 # plt.show(block=True)
-                print("{} points detected!".format(world_co.shape[1]))
                 # Add to color map
                 xidx, yidx = physics2map(map, xm, ym, world_co[0, :], world_co[1, :])
                 color_map[:, xidx, yidx] = img
