@@ -16,33 +16,39 @@ def toc(tstart, name="Operation"):
 
 
 def compute_stereo():
-    path_l = 'data/stereo_left'
-    path_r = 'data/stereo_right'
-    stereo = cv2.StereoBM_create(numDisparities=64, blockSize=9) 
-    time_stamp_array = np.zeros(len(os.listdir(path_l)), dtype=np.int64)
-    disparity_array = None
-    for i, filename in enumerate(os.listdir(path_l)):
-        time_stamp = os.path.splitext(filename)[0]
-        image_l = cv2.imread(os.path.join(path_l, filename), 0)
-        image_r = cv2.imread(os.path.join(path_r, filename), 0)
-        if image_l is None or image_r is None:
-            continue
-        image_l = cv2.cvtColor(image_l, cv2.COLOR_BAYER_BG2BGR)
-        image_r = cv2.cvtColor(image_r, cv2.COLOR_BAYER_BG2BGR)
-        image_l_gray = cv2.cvtColor(image_l, cv2.COLOR_BGR2GRAY)
-        image_r_gray = cv2.cvtColor(image_r, cv2.COLOR_BGR2GRAY)
+    """
+    
+    Compute the disparity map for stereo images.
+    
+    """
+    if not os.path.exists("data/disparity.npy"):
+        path_l = 'data/stereo_left'
+        path_r = 'data/stereo_right'
+        stereo = cv2.StereoBM_create(numDisparities=64, blockSize=9) 
+        time_stamp_array = np.zeros(len(os.listdir(path_l)), dtype=np.int64)
+        disparity_array = None
+        for i, filename in enumerate(os.listdir(path_l)):
+            time_stamp = os.path.splitext(filename)[0]
+            image_l = cv2.imread(os.path.join(path_l, filename), 0)
+            image_r = cv2.imread(os.path.join(path_r, filename), 0)
+            if image_l is None or image_r is None:
+                continue
+            image_l = cv2.cvtColor(image_l, cv2.COLOR_BAYER_BG2BGR)
+            image_r = cv2.cvtColor(image_r, cv2.COLOR_BAYER_BG2BGR)
+            image_l_gray = cv2.cvtColor(image_l, cv2.COLOR_BGR2GRAY)
+            image_r_gray = cv2.cvtColor(image_r, cv2.COLOR_BGR2GRAY)
 
-        if disparity_array is None:
-            disparity_array = np.zeros((len(os.listdir(path_l)), *image_l.shape[:-1]), dtype=np.float16)
-        # You may need to fine-tune the variables `numDisparities` and `blockSize` based on the desired accuracy
-        disparity = stereo.compute(image_l_gray, image_r_gray).astype(np.float32) / 16
-        disparity[disparity < 0] = 0
-        disparity_array[i, :, :] = disparity
-        time_stamp_array[i] = time_stamp
-    nonzero_idx = (time_stamp_array != 0)
-    time_stamp_array, disparity_array = time_stamp_array[nonzero_idx], disparity_array[nonzero_idx]
-    np.save("data/disparity.npy", disparity_array)
-    np.save("data/time_stamp.npy", time_stamp_array)
+            if disparity_array is None:
+                disparity_array = np.zeros((len(os.listdir(path_l)), *image_l.shape[:-1]), dtype=np.float16)
+            # You may need to fine-tune the variables `numDisparities` and `blockSize` based on the desired accuracy
+            disparity = stereo.compute(image_l_gray, image_r_gray).astype(np.float32) / 16
+            disparity[disparity < 0] = 0
+            disparity_array[i, :, :] = disparity
+            time_stamp_array[i] = time_stamp
+        nonzero_idx = (time_stamp_array != 0)
+        time_stamp_array, disparity_array = time_stamp_array[nonzero_idx], disparity_array[nonzero_idx]
+        np.save("data/disparity.npy", disparity_array)
+        np.save("data/time_stamp.npy", time_stamp_array)
 
 
 def calculate_camera():
@@ -386,10 +392,3 @@ def transform_orient_to_mat(orient):
     m_cos, m_sin = np.cos(orient), np.sin(orient)
     return np.reshape(np.transpose(np.array([[m_cos, -m_sin], [m_sin, m_cos]]),axes=[2, 0, 1]), newshape=(-1, 2))
 
-if __name__ == '__main__':
-    compute_stereo()
-    #show_lidar()
-    #test_mapCorrelation()
-    #test_bresenham2D()
-    # print(transform_orient_to_mat(np.array([0, 1.57])))
-    pass
