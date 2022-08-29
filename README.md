@@ -25,3 +25,7 @@ python run_slam.py
 
 ## Demo
 
+https://user-images.githubusercontent.com/44419662/187271535-44d5d327-fa26-4b4e-9f87-1727f00f218d.mp4
+
+https://user-images.githubusercontent.com/44419662/187271563-15a96fd3-70ae-464e-ba77-5070f96d462f.mp4
+
