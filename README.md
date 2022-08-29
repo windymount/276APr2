@@ -1,6 +1,6 @@
 # Particle filter SLAM
 This project used data collected from sensors and stereo camera on an autonomous car to perform simultaneously localization and mapping (SLAM).
-## How to run this project
+## Quick start
 1. Create directories for saving data and output images.
 ```
 mkdir img data
@@ -22,3 +22,6 @@ Particle_filter_SLAM
 ```
 python run_slam.py
 ```
+
+## Demo
+

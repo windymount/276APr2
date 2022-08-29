@@ -66,10 +66,3 @@ def update_map(map, xm, ym, body_rotation, body_position, lidar_data):
         map[path_idx[0, :], path_idx[1, :]] = np.minimum(np.maximum(map[path_idx[0, :], path_idx[1, :]], LOGODDS_LOWER), LOGODDS_UPPER)
     return map
 
-
-def draw_map_from_stereo(map, xm, ym, stereo_img_l, disparity):
-    """
-    
-    Mark point at map with RGB color.
-    
-    """

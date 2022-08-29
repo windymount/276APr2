@@ -91,7 +91,11 @@ def update_particles(position, orient, weights, lidar_data, map, xm, ym):
 
 
 def resample_particles(position, orient, weights):
-    # Resample particles if effective particles too few.
+    """ 
+    
+    Resample particles if effective particles too few.
+
+    """
     n_particles = len(weights)
     eff_particles = 1 / np.sum(weights ** 2)
     if eff_particles / n_particles < RESAMPLE_THRESHOLD:
